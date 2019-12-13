@@ -7,6 +7,7 @@
 
 from scrapy import signals
 
+from urllib.parse import unquote
 
 class SpiderSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
@@ -78,7 +79,8 @@ class SpiderDownloaderMiddleware(object):
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
-        return None
+
+        request._url = unquote(request.url)
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
