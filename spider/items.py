@@ -9,6 +9,13 @@ import scrapy
 
 
 class SpiderItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    html = scrapy.Field()
+    aid = scrapy.Field()
+    title = scrapy.Field()
+    author = scrapy.Field()
+    nickname = scrapy.Field()
+    timestamp = scrapy.Field()
+    content = scrapy.Field()
+    ip = scrapy.Field()
+    location = scrapy.Field()
+    reply = scrapy.Field()
