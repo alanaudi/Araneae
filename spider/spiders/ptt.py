@@ -15,7 +15,6 @@ from baseconv import base16, base64
 class PTTSpider(Spider):
     name = 'ptt'
     allowed_domains = ['ptt.cc']
-    start_urls = ['https://www.ptt.cc/bbs/Gossiping/index.html']
 
     PTT_URL = "https://www.ptt.cc/bbs"
     _pages = 0
@@ -26,6 +25,7 @@ class PTTSpider(Spider):
     # }}}
 
     def start_requests(self): # {{{
+        self.start_urls = [F'https://www.ptt.cc/bbs/{self.board}/index.html']
         yield Request(self.start_urls[0], callback=self.parse, cookies={'over18': 1})
     # }}}
 
@@ -72,11 +72,10 @@ class PTTSpider(Spider):
         yield post
     # }}}
 
-    @staticmethod
-    def _parse_rent(r): # {{{
+    def _parse_rent(self, r): # {{{
         try:
             href = r.css('div.title > a::attr(href)').extract()[0]
-            filename = re.search(F'/bbs/Gossiping/(.*).html', href).group(1)
+            filename = re.search(F'/bbs/{self.board}/(.*).html', href).group(1)
             t, _ = re.findall(r'M\.(.*)\.A\.(.*)', filename)[0]
             date = datetime.fromtimestamp(int(t)).strftime("%Y-%m-%d")
         except:
@@ -105,6 +104,7 @@ class PTTSpider(Spider):
         ip_datetime_term = re.findall(r'([0-9]+(?:\.[0-9]+){3}) (.*)', ip_datetime)
         if len(ip_datetime_term) > 0:
             ip, _datetime = ip_datetime_term[0]
+            _datetime = parser.parse(_datetime)
         else:
             ip, _datetime = '', ''
 
@@ -113,7 +113,7 @@ class PTTSpider(Spider):
             "username": userid,
             "content": content,
             "ip": ip,
-            "datetime": parser.parse(_datetime)
+            "datetime": _datetime
         }
     # }}}
 
