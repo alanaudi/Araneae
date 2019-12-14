@@ -20,9 +20,9 @@ class PTTSpider(Spider):
     PTT_URL = "https://www.ptt.cc/bbs"
     _pages = 0
 
-    def __init__(self, board): # {{{
-        self.board = board
-        self.url = f'{self.PTT_URL}/{board}'
+    def __init__(self, **kwargs): # {{{
+        super().__init__(**kwargs)
+        self.url = f'{self.PTT_URL}/{self.board}'
     # }}}
 
     def start_requests(self): # {{{
@@ -37,7 +37,7 @@ class PTTSpider(Spider):
         divs = divs[flags[0]:(flags[1]-1 if len(flags) == 2 else len(divs))]
         divs = sorted([self._parse_rent(d) for d in divs], key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d'), reverse=True)
         dates = [d['date'] for d in divs]
-        divs = list(filter(partial(self._check_date, '2019-12-14', '2019-12-01'), divs))
+        divs = list(filter(partial(self._check_date, self.start, self.end), divs))
         for meta in divs:
             yield Request(F'{self.url}/{meta["filename"]}.html', callback=self.parse_post, meta=meta)
     # }}}
