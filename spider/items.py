@@ -7,9 +7,8 @@
 
 import scrapy
 
-
-class SpiderItem(scrapy.Item):
-    html = scrapy.Field()
+class PTTItem(scrapy.Item):
+    filename = scrapy.Field()
     aid = scrapy.Field()
     title = scrapy.Field()
     author = scrapy.Field()
