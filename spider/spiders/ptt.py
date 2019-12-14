@@ -72,10 +72,11 @@ class PTTSpider(Spider):
         yield post
     # }}}
 
-    def _parse_rent(self, r): # {{{
+    @staticmethod
+    def _parse_rent(r): # {{{
         try:
             href = r.css('div.title > a::attr(href)').extract()[0]
-            filename = re.search(F'/bbs/{self.board}/(.*).html', href).group(1)
+            filename = re.findall(r'/bbs/.*/(.*).html', href)[0]
             t, _ = re.findall(r'M\.(.*)\.A\.(.*)', filename)[0]
             date = datetime.fromtimestamp(int(t)).strftime("%Y-%m-%d")
         except:
