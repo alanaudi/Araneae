@@ -69,6 +69,7 @@ class PTTSpider(Spider):
 
         post['reply'] = {str(i+1):self._parse_reply(item) for i, item in enumerate(reply_selector)}
         post['content'] = content_selector.xpath('//div[@id="main-content"]/text()')[0].extract()
+        yield post
     # }}}
 
     @staticmethod
