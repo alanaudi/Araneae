@@ -17,21 +17,42 @@ class PTTSpider(Spider):
     allowed_domains = ['ptt.cc']
 
     PTT_URL = "https://www.ptt.cc/bbs"
-    _pages = 0
+    _next = None
 
     def __init__(self, **kwargs): # {{{
+        """ Init spider attributes
+
+        Parameters
+        ----------
+        board : str | ptt board name in <a> tag
+        start : str | start date
+        end   : str | end date
+
+        Usage
+        -----
+        $ scrapy crawl ptt -a board=Gossiping -a start=20191231 -a end=20191201
+        """
+
         super().__init__(**kwargs)
         self.url = f'{self.PTT_URL}/{self.board}'
     # }}}
 
     def start_requests(self): # {{{
-        self.start_urls = [F'https://www.ptt.cc/bbs/{self.board}/index.html']
-        yield Request(self.start_urls[0], callback=self.parse, cookies={'over18': 1})
+        """ Redefine start_requests
+
+        After redifine this function, starts_urls is no longer needed.
+        """
+
+        self.entry = F'https://www.ptt.cc/bbs/{self.board}/index.html'
+        yield Request(self.entry, callback=self.parse, cookies={'over18': 1})
     # }}}
 
-    def parse(self, response):# {{{
+    def parse(self, response): # {{{
+        """ Redifine parse function
 
-        self._pages += 1
+        Parse links in index page of certain board and call the parse_post
+        """
+
         divs = response.css('.r-list-container > div')
         flags = [idx+1 for idx, d in enumerate(divs) if d.xpath('@class').extract()[0] in ['search-bar', 'r-list-sep']]
         divs = divs[flags[0]:(flags[1]-1 if len(flags) == 2 else len(divs))]
@@ -43,6 +64,8 @@ class PTTSpider(Spider):
     # }}}
 
     def parse_post(self, response):# {{{
+        """ Parse each article and yield post item """
+
         content_selector = response.css('div#main-content')[0]
         author_selector = response.css('div.article-metaline')[0]
         title_selector = response.css('div.article-metaline')[1]
@@ -133,7 +156,7 @@ class PTTSpider(Spider):
         ----------
         filename : str
 
-        Yields
+        Return
         ------
         str | Article IDentifier in 8 base64 char
 
@@ -142,7 +165,6 @@ class PTTSpider(Spider):
         M.timestamp.A.random{0xfff} --> #[base64][base64]
         ex: 1197864962.A.476 --> #17PVW2Hs
                                  #12345612
-
         """
 
         t, r = re.findall(r'M\.(.*)\.A\.(.*)', filename)[0]
