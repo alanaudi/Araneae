@@ -30,11 +30,22 @@ class PTTSpider(Spider):
 
         Usage
         -----
-        $ scrapy crawl ptt -a board=Gossiping -a start=20191231 -a end=20191201
+        $ scrapy crawl ptt -a board=Gossiping -a start=2019-12-31 -a end=2019-12-01
+        $ scrapy crawl ptt -a board=Gossiping -a start=2019-12-31 -a end=2019-12-01 -o output.json
         """
-
+        # {{{ start_urls
+        # If use start_requests, start_urls initialization is needed
+        # start_urls = ['link1', 'link2', ...]
+        # }}}
         super().__init__(**kwargs)
         self.url = f'{self.PTT_URL}/{self.board}'
+    # }}}
+
+    # {{{ start_requests
+    """ Default start_requests() """
+    # def start_requests(self):
+    #     for url in self.start_urls:
+    #         yield Request(url, self.parse, errback=self.on_error)
     # }}}
 
     def start_requests(self): # {{{
@@ -53,14 +64,35 @@ class PTTSpider(Spider):
         Parse links in index page of certain board and call the parse_post
         """
 
+        # {{{ Scrapy selector
+        # -> xpath
+        # ex1
+	# Selector.xpath('//meta[@property="og:title"]/@content')[0].extract()
+        # ex2
+        # Selector.xpath('//div[@id="main-content"]/text()')[0].extract()
+
+        # -> css
+        # ex1
+        # Selector.css('div.btn-group.btn-group-paging > a::attr(href)').extract()[1]
+        # }}}
+
         divs = response.css('.r-list-container > div')
         flags = [idx+1 for idx, d in enumerate(divs) if d.xpath('@class').extract()[0] in ['search-bar', 'r-list-sep']]
         divs = divs[flags[0]:(flags[1]-1 if len(flags) == 2 else len(divs))]
         divs = sorted([self._parse_rent(d) for d in divs], key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d'), reverse=True)
+        divs = [d for d in divs if d['filename'] != '']
         dates = [d['date'] for d in divs]
         divs = list(filter(partial(self._check_date, self.start, self.end), divs))
+        crop_dates = [d['date'] for d in divs]
+
         for meta in divs:
             yield Request(F'{self.url}/{meta["filename"]}.html', callback=self.parse_post, meta=meta)
+
+        if len(set(dates) - set(crop_dates)) == 0:
+            next_page_link = response.css('div.btn-group.btn-group-paging > a::attr(href)').extract()[1]
+            next_page_index = re.search(F'.*/index(.*).html', next_page_link).group(1)
+
+            yield Request(F'{self.url}/index{next_page_index}.html', self.parse)
     # }}}
 
     def parse_post(self, response):# {{{
@@ -116,7 +148,7 @@ class PTTSpider(Spider):
                     'date': date,
                     'author': author,
                     'title': title
-                }
+               }
     # }}}
 
     @staticmethod
@@ -170,4 +202,21 @@ class PTTSpider(Spider):
         t, r = re.findall(r'M\.(.*)\.A\.(.*)', filename)[0]
 
         return base64.encode(t) + base64.encode(base16.decode(r))
+    # }}}
+
+
+    # Process {{{
+    # from scrapy.crawler import CrawlerProcess
+    #
+    # class MySpider(scrapy.Spider):
+    #     # Your spider definition
+    #     ...
+    #
+    # process = CrawlerProcess(settings={
+    #     'FEED_FORMAT': 'json',
+    #     'FEED_URI': 'items.json'
+    # })
+    #
+    # process.crawl(MySpider)
+    # process.start() # the script will block here until the crawling is finished
     # }}}
