@@ -1,6 +1,6 @@
 # Standard import
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from dateutil import parser
 
@@ -18,6 +18,8 @@ class PTTSpider(Spider):
 
     PTT_URL = "https://www.ptt.cc/bbs"
     _next = None
+    _start_flag = False
+    _end_flag = False
 
     def __init__(self, **kwargs): # {{{
         """ Init spider attributes
@@ -32,6 +34,7 @@ class PTTSpider(Spider):
         -----
         $ scrapy crawl ptt -a board=Gossiping -a start=2019-12-31 -a end=2019-12-01
         $ scrapy crawl ptt -a board=Gossiping -a start=2019-12-31 -a end=2019-12-01 -o output.json
+        $ scrapy crawl ptt -a board=Gossiping -a start=2019-12-31 -a end=2019-12-01 -o output.json -s LOG_ENABLED=False
         """
         # {{{ start_urls
         # If use start_requests, start_urls initialization is needed
@@ -39,6 +42,7 @@ class PTTSpider(Spider):
         # }}}
         super().__init__(**kwargs)
         self.url = f'{self.PTT_URL}/{self.board}'
+        self._day_before_end = datetime.strftime(datetime.strptime(self.end, '%Y-%m-%d') - timedelta(1), '%Y-%m-%d')
     # }}}
 
     # {{{ start_requests
@@ -80,19 +84,31 @@ class PTTSpider(Spider):
         flags = [idx+1 for idx, d in enumerate(divs) if d.xpath('@class').extract()[0] in ['search-bar', 'r-list-sep']]
         divs = divs[flags[0]:(flags[1]-1 if len(flags) == 2 else len(divs))]
         divs = sorted([self._parse_rent(d) for d in divs], key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d'), reverse=True)
+
+        # Remove empty post
         divs = [d for d in divs if d['filename'] != '']
+
         dates = [d['date'] for d in divs]
-        divs = list(filter(partial(self._check_date, self.start, self.end), divs))
-        crop_dates = [d['date'] for d in divs]
 
-        for meta in divs:
-            yield Request(F'{self.url}/{meta["filename"]}.html', callback=self.parse_post, meta=meta)
+        if self.start in dates: self._start_flag = True
+        if self._day_before_end in dates: self._end_flag = True
+        self._next = not (self._start_flag and self._end_flag)
 
-        if len(set(dates) - set(crop_dates)) == 0:
+        if self._next:
+            print("Turn page ...")
             next_page_link = response.css('div.btn-group.btn-group-paging > a::attr(href)').extract()[1]
             next_page_index = re.search(F'.*/index(.*).html', next_page_link).group(1)
 
             yield Request(F'{self.url}/index{next_page_index}.html', self.parse)
+
+        # Filter wanted post
+        divs = list(filter(partial(self._check_date, self.start, self._day_before_end), divs))
+        self._total += len(divs)
+        print(F"=============== Total : {self._total} ===================")
+
+        for meta in divs:
+            yield Request(F'{self.url}/{meta["filename"]}.html', callback=self.parse_post, meta=meta)
+        # print(divs)
     # }}}
 
     def parse_post(self, response):# {{{
@@ -175,7 +191,7 @@ class PTTSpider(Spider):
 
     @staticmethod
     def _check_date(start, end, d): # {{{
-        if datetime.strptime(d['date'], '%Y-%m-%d') > datetime.strptime(end, '%Y-%m-%d') and \
+        if datetime.strptime(d['date'], '%Y-%m-%d') >= datetime.strptime(end, '%Y-%m-%d') and \
            datetime.strptime(d['date'], '%Y-%m-%d') <= datetime.strptime(start, '%Y-%m-%d'):
             return True
     # }}}
