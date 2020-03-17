@@ -20,6 +20,7 @@ class PTTSpider(Spider):
     _next = None
     _start_flag = False
     _end_flag = False
+    _total = 0
 
     def __init__(self, **kwargs): # {{{
         """ Init spider attributes
@@ -71,7 +72,7 @@ class PTTSpider(Spider):
         # {{{ Scrapy selector
         # -> xpath
         # ex1
-	# Selector.xpath('//meta[@property="og:title"]/@content')[0].extract()
+        # Selector.xpath('//meta[@property="og:title"]/@content')[0].extract()
         # ex2
         # Selector.xpath('//div[@id="main-content"]/text()')[0].extract()
 
@@ -160,12 +161,12 @@ class PTTSpider(Spider):
         author = r.css('div.author::text').extract()[0]
 
         return {
-                    'filename': filename,
-                    'date': date,
-                    'author': author,
-                    'title': title
-               }
-    # }}}
+                'filename': filename,
+                'date': date,
+                'author': author,
+                'title': title
+                }
+        # }}}
 
     @staticmethod
     def _parse_reply(r): # {{{
@@ -181,19 +182,19 @@ class PTTSpider(Spider):
             ip, _datetime = '', ''
 
         return {
-            "types": tag,
-            "username": userid,
-            "content": content,
-            "ip": ip,
-            "datetime": _datetime
-        }
-    # }}}
+                "types": tag,
+                "username": userid,
+                "content": content,
+                "ip": ip,
+                "datetime": _datetime
+                }
+        # }}}
 
     @staticmethod
     def _check_date(start, end, d): # {{{
         if datetime.strptime(d['date'], '%Y-%m-%d') >= datetime.strptime(end, '%Y-%m-%d') and \
-           datetime.strptime(d['date'], '%Y-%m-%d') <= datetime.strptime(start, '%Y-%m-%d'):
-            return True
+                datetime.strptime(d['date'], '%Y-%m-%d') <= datetime.strptime(start, '%Y-%m-%d'):
+                    return True
     # }}}
 
     @staticmethod
